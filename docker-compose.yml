@@ -1,0 +1,69 @@
+version: '2.1'
+
+networks:
+  dataapi:
+      driver: bridge
+services:
+  eureka:
+    image: ega-data-api/eureka:v1
+    hostname: eureka        
+    restart: on-failure
+    networks:
+      - dataapi
+    ports:
+      - "8761:8761"     
+
+  db:
+    image: ega-data-api/db:v1
+    env_file: ./docker-deployment/db.env
+    networks:
+      - dataapi
+    ports:
+      - "5432:5432"        
+
+  downloader:
+    image: ega-data-api/filedatabase:v1
+    restart: on-failure
+    ports:
+      - "9050:9050"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker, LocalEGA, no-oss
+    networks:
+      - dataapi
+    depends_on:
+      db:
+        condition: service_started
+
+  res:
+    image: ega-data-api/res:v1
+    restart: on-failure
+    ports: 
+      - "9090:9090"
+    networks:
+      - dataapi
+    volumes:
+      - ./docker-deployment/data:/data
+    environment:
+      SPRING_PROFILES_ACTIVE: docker, enable-filesystem-based-archive, disable-cache, LocalEGA, no-oss
+
+  dataedge:
+    image: ega-data-api/dataedge:v1
+    restart: on-failure
+    ports:
+      - "9059:9059"        
+    environment:
+      SPRING_PROFILES_ACTIVE: docker, LocalEGA, no-oss
+    networks:
+      - dataapi
+
+  key:
+    image: ega-data-api/key:v1
+    restart: on-failure
+    ports:
+      - "9094:9094"
+    networks:
+      - dataapi
+    environment:
+      SPRING_PROFILES_ACTIVE: docker, no-oss
+    volumes:
+      - "./docker-deployment/keys:/etc/keys"
