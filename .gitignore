@@ -27,3 +27,7 @@ nb-configuration.xml
 *.zip
 *.tar.gz
 *.rar
+
+# bakfile
+*.bak
+bak/
