@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GpgConfiguration>
+        <Keys>
+                <Key ID="1">
+                        <Type>AES</Type>
+			<KeyPath>/etc/keys/aeskey</KeyPath>
+                        <KeyFile>aeskey</KeyFile>
+                        <KeyKey></KeyKey>
+                </Key>
+        </Keys>
+</GpgConfiguration>
