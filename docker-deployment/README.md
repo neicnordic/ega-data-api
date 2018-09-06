@@ -17,6 +17,8 @@
 		docker-compose down
 
 ##TODO:
-		1. configurations for the database and dataedge
-		2. examples for testing
+
+1. configurations for the database and dataedge
+
+2. examples for testing
 
