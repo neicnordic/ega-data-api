@@ -15,7 +15,7 @@ services:
 
   db:
     image: ega-data-api/db:v1
-    env_file: ./docker-deployment/db.env
+    env_file: ./db.env
     networks:
       - dataapi
     ports:
@@ -42,7 +42,7 @@ services:
     networks:
       - dataapi
     volumes:
-      - ./docker-deployment/data:/data
+      - ./data:/data
     environment:
       SPRING_PROFILES_ACTIVE: docker, enable-filesystem-based-archive, disable-cache, LocalEGA, no-oss
 
@@ -66,4 +66,4 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker, no-oss
     volumes:
-      - "./docker-deployment/keys:/etc/keys"
+      - "./keys:/etc/keys"
