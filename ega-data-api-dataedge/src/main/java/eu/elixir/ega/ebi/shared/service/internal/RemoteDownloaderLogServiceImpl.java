@@ -17,6 +17,9 @@ package eu.elixir.ega.ebi.shared.service.internal;
 
 import static eu.elixir.ega.ebi.shared.Constants.FILEDATABASE_SERVICE;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.http.HttpEntity;
@@ -31,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
+import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
 
 /**
@@ -47,52 +51,73 @@ public class RemoteDownloaderLogServiceImpl extends
     @Autowired
     private ObjectMapper objectMapper;
 
-    /**
-     * Converts a download entry to JSON and sends a POST request to the file
-     * database service to store the event.
-     *
-     * @param downloadEntry The download entry to log.
-     */
-    @Override
-    @Async
-    public void logDownload(DownloadEntry downloadEntry) {
+	public static final Logger log = Logger.getLogger(RemoteDownloaderLogServiceImpl.class.getName());
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+	@Autowired
+	private AuthenticationService authenticationService;
 
-        // Jackson ObjectMapper to convert requestBody to JSON
-        String json = null;
-        try {
-            json = objectMapper.writeValueAsString(downloadEntry);
-        } catch (JsonProcessingException jsonProcessingException) {
-            throw new RuntimeException(jsonProcessingException);
-        }
+	/**
+	 * Converts a download entry to JSON and sends a POST request to the file
+	 * database service to store the event.
+	 *
+	 * @param downloadEntry The download entry to log.
+	 */
+	@Override
+	@Async
+	public void logDownload(DownloadEntry downloadEntry) {
 
-        restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/download/", new HttpEntity<>(json, headers), String.class);
-    }
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
 
-    /**
+		// Jackson ObjectMapper to convert requestBody to JSON
+		String json = null;
+		try {
+			json = objectMapper.writeValueAsString(downloadEntry);
+		} catch (JsonProcessingException jsonProcessingException) {
+			throw new RuntimeException(jsonProcessingException);
+		}
+		
+		logFileDownload(downloadEntry);
+		
+		restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/download/", new HttpEntity<>(json, headers),
+				String.class);
+	}
+
+	/**
      * Converts an event entry to JSON and sends a POST request to the file
      * database service to store the event.
-     *
-     * @param eventEntry The event to log.
-     */
-    @Override
-    @Async
-    public void logEvent(EventEntry eventEntry) {
+	 *
+	 * @param eventEntry The event to log.
+	 */
+	@Override
+	@Async
+	public void logEvent(EventEntry eventEntry) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // Jackson ObjectMapper to convert requestBody to JSON
-        String json = null;
-        try {
-            json = objectMapper.writeValueAsString(eventEntry);
-        } catch (JsonProcessingException jsonProcessingException) {
-            throw new RuntimeException(jsonProcessingException);
-        }
+		// Jackson ObjectMapper to convert requestBody to JSON
+		String json = null;
+		try {
+			json = objectMapper.writeValueAsString(eventEntry);
+		} catch (JsonProcessingException jsonProcessingException) {
+			throw new RuntimeException(jsonProcessingException);
+		}
+		logFileDownload(eventEntry);
 
-        restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/event/", new HttpEntity<>(json, headers), String.class);
-    }
+		restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/event/", new HttpEntity<>(json, headers), String.class);
+	}
+
+	private void logFileDownload(DownloadEntry downloadEntry) {
+		String loggedinUser = authenticationService.getName();
+		String fileId = downloadEntry.getFileId();
+		log.log(Level.INFO, String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
+	}
+
+	private void logFileDownload(EventEntry eventEntry) {
+		String loggedinUser = authenticationService.getName();
+		String event = eventEntry.toString();
+		log.log(Level.INFO, String.format("User %s attempted to download file with error %s", loggedinUser, event));		
+	}
 
 }
