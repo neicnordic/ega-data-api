@@ -17,9 +17,6 @@ package eu.elixir.ega.ebi.shared.service.internal;
 
 import static eu.elixir.ega.ebi.shared.Constants.FILEDATABASE_SERVICE;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.http.HttpEntity;
@@ -36,10 +33,12 @@ import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
 import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author asenf
  */
+@Slf4j
 @Service
 @EnableDiscoveryClient
 public class RemoteDownloaderLogServiceImpl extends
@@ -50,8 +49,6 @@ public class RemoteDownloaderLogServiceImpl extends
 
     @Autowired
     private ObjectMapper objectMapper;
-
-	public static final Logger log = Logger.getLogger(RemoteDownloaderLogServiceImpl.class.getName());
 
 	@Autowired
 	private AuthenticationService authenticationService;
@@ -112,13 +109,15 @@ public class RemoteDownloaderLogServiceImpl extends
 	private void logFileDownload(DownloadEntry downloadEntry) {
 		String loggedinUser = authenticationService.getName();
 		String fileId = downloadEntry.getFileId();
-		log.log(Level.INFO, String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
+		log.info(String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
+		System.out.println(String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
 	}
 
 	private void logFileDownload(EventEntry eventEntry) {
 		String loggedinUser = authenticationService.getName();
 		String event = eventEntry.toString();
-		log.log(Level.INFO, String.format("User %s attempted to download file with error %s", loggedinUser, event));		
+		log.info(String.format("User %s attempted to download file with error %s", loggedinUser, event));		
+		System.out.println(String.format("User %s attempted to download file with error %s", loggedinUser, event));		
 	}
 
 }
