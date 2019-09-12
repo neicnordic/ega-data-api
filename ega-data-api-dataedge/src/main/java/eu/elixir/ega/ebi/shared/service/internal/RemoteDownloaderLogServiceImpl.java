@@ -68,6 +68,8 @@ public class RemoteDownloaderLogServiceImpl extends
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
+		
+		logFileDownload(downloadEntry);
 
 		// Jackson ObjectMapper to convert requestBody to JSON
 		String json = null;
@@ -76,8 +78,6 @@ public class RemoteDownloaderLogServiceImpl extends
 		} catch (JsonProcessingException jsonProcessingException) {
 			throw new RuntimeException(jsonProcessingException);
 		}
-		
-		logFileDownload(downloadEntry);
 		
 		restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/download/", new HttpEntity<>(json, headers),
 				String.class);
@@ -96,6 +96,8 @@ public class RemoteDownloaderLogServiceImpl extends
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
+		logFileDownload(eventEntry);
+		
 		// Jackson ObjectMapper to convert requestBody to JSON
 		String json = null;
 		try {
@@ -103,7 +105,6 @@ public class RemoteDownloaderLogServiceImpl extends
 		} catch (JsonProcessingException jsonProcessingException) {
 			throw new RuntimeException(jsonProcessingException);
 		}
-		logFileDownload(eventEntry);
 
 		restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/event/", new HttpEntity<>(json, headers), String.class);
 	}
