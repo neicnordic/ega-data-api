@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
-import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,9 +48,6 @@ public class RemoteDownloaderLogServiceImpl extends
 
     @Autowired
     private ObjectMapper objectMapper;
-
-	@Autowired
-	private AuthenticationService authenticationService;
 
 	/**
 	 * Converts a download entry to JSON and sends a POST request to the file
@@ -104,20 +100,6 @@ public class RemoteDownloaderLogServiceImpl extends
 		}
 
 		restTemplate.postForEntity(FILEDATABASE_SERVICE + "/log/event/", new HttpEntity<>(json, headers), String.class);
-	}
-
-	private void logFileDownload(DownloadEntry downloadEntry) {
-		String loggedinUser = authenticationService.getName();
-		String fileId = downloadEntry.getFileId();
-		log.info(String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
-		System.out.println(String.format("User %s attempt successfully to download file %s", loggedinUser, fileId));
-	}
-
-	private void logFileDownload(EventEntry eventEntry) {
-		String loggedinUser = authenticationService.getName();
-		String event = eventEntry.toString();
-		log.info(String.format("User %s attempted to download file with error %s", loggedinUser, event));		
-		System.out.println(String.format("User %s attempted to download file with error %s", loggedinUser, event));		
 	}
 
 }
