@@ -17,6 +17,9 @@ package eu.elixir.ega.ebi.reencryptionmvc.service.internal;
 
 import eu.elixir.ega.ebi.reencryptionmvc.dto.KeyPath;
 import eu.elixir.ega.ebi.reencryptionmvc.service.KeyService;
+
+import static eu.elixir.ega.ebi.reencryptionmvc.config.Constants.KEYS_SERVICE;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -24,8 +27,6 @@ import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import static eu.elixir.ega.ebi.shared.Constants.KEYS_SERVICE;
 
 /**
  * @author asenf

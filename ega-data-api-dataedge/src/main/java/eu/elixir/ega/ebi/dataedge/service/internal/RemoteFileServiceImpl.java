@@ -15,6 +15,7 @@
  */
 package eu.elixir.ega.ebi.dataedge.service.internal;
 
+import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CountingOutputStream;
 import eu.elixir.ega.ebi.dataedge.config.*;
@@ -44,6 +45,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.MyVCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,12 +74,11 @@ import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import java.util.stream.Stream;
 
-import static eu.elixir.ega.ebi.shared.Constants.FILEDATABASE_SERVICE;
-import static eu.elixir.ega.ebi.shared.Constants.RES_SERVICE;
+import static eu.elixir.ega.ebi.dataedge.config.Constants.FILEDATABASE_SERVICE;
+import static eu.elixir.ega.ebi.dataedge.config.Constants.RES_SERVICE;
 import static org.apache.catalina.connector.OutputBuffer.DEFAULT_BUFFER_SIZE;
 
 /**
@@ -85,6 +86,7 @@ import static org.apache.catalina.connector.OutputBuffer.DEFAULT_BUFFER_SIZE;
  */
 @Service
 @EnableDiscoveryClient
+@Slf4j
 public class RemoteFileServiceImpl implements FileService {
 
     @Autowired
@@ -124,7 +126,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param response Response stream for the returned data.
      */
     @Override
-    //@HystrixCommand
     public void getFile(String fileId,
                         String destinationFormat,
                         String destinationKey,
@@ -134,6 +135,7 @@ public class RemoteFileServiceImpl implements FileService {
                         HttpServletRequest request,
                         HttpServletResponse response) {
 
+		String sessionId= Strings.isNullOrEmpty(request.getHeader("Session-Id"))? "" : request.getHeader("Session-Id") + " ";
         // Ascertain Access Permissions for specified File ID
         File reqFile = fileInfoService.getFileInfo(fileId); // request added for ELIXIR
         if (reqFile == null) {
@@ -148,7 +150,7 @@ public class RemoteFileServiceImpl implements FileService {
 
         // File Archive Type - Reject GPG
         if (reqFile.getFileName().toLowerCase().endsWith("gpg")) {
-            throw new NotImplementedException("Please contact EGA to download this file.");
+            throw new NotImplementedException(sessionId + "Please contact EGA to download this file.");
         }
 
         // Variables needed for responses at the end of the function
@@ -180,9 +182,10 @@ public class RemoteFileServiceImpl implements FileService {
             DigestOutputStream outDigestStream = new DigestOutputStream(response.getOutputStream(), outDigest);
 
             // Get RES data stream, and copy it to output stream
-            RequestCallback requestCallback = request_ -> request_.getHeaders()
-                    .setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL));
-
+            RequestCallback requestCallback = request_ -> {
+                request_.getHeaders().set("Session-Id", sessionId.trim());
+                request_.getHeaders().setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL));
+                };
             // -----------------------------------------------------------------
             // Callback Function for Resttemplate
             // Get Data Stream from RES ReEncryptionService
@@ -216,10 +219,9 @@ public class RemoteFileServiceImpl implements FileService {
                     outDigestStream.close();
                     inHashtext = getDigestText(inDigest.digest());
                 } catch (Throwable t) {
-                    System.out.println("RemoteFileServiceImpl Error 1: " + t.toString());
-                    t.getMessage();
+                    log.error(sessionId + "RemoteFileServiceImpl Error 1: " + t.toString());
                     String errorMessage = t.toString();
-                    throw new GeneralStreamingException(errorMessage, 7);
+                    throw new GeneralStreamingException(sessionId + errorMessage, 7);
                 }
 
                 // return number of bytes copied, RES session header, and MD5 of RES input stream
@@ -242,12 +244,16 @@ public class RemoteFileServiceImpl implements FileService {
             timeDelta = System.currentTimeMillis() - timeDelta;
 
         } catch (Throwable t) { // Log Error!
-            System.out.println("RemoteFileServiceImpl Error 2: " + t.toString());
+            log.info(sessionId + "Get file received error");
+            log.error(sessionId + "RemoteFileServiceImpl Error 2: " + t.toString());
             String errorMessage = fileId + ":" + destinationFormat + ":" + startCoordinate + ":" + endCoordinate + ":" + t.toString();
+            if(errorMessage!=null && errorMessage.length() > 256) {
+                errorMessage = errorMessage.substring(0,256);
+            }
             EventEntry eev = downloaderLogService.createEventEntry(errorMessage,  "file");
             downloaderLogService.logEvent(eev);
 
-            throw new GeneralStreamingException(t.toString(), 4);
+            throw new GeneralStreamingException(sessionId + t.toString(), 4);
         } finally {
             if (xferResult != null) {
 
@@ -259,7 +265,7 @@ public class RemoteFileServiceImpl implements FileService {
                 boolean success = outHashtext.equals(inHashtext);
                 double speed = (xferResult.getBytes() / 1024.0 / 1024.0) / (timeDelta / 1000.0);
                 long bytes = xferResult.getBytes();
-                System.out.println("Success? " + success + ", Speed: " + speed + " MB/s");
+                log.info(sessionId + "Success? " + success + ", Speed: " + speed + " MB/s");
                 DownloadEntry dle = downloaderLogService.createDownloadEntry(success, speed, fileId,
                          "file", destinationFormat,
                         startCoordinate, endCoordinate, bytes);
@@ -278,7 +284,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param response Response stream for the returned data.
      */
     @Override
-    //@HystrixCommand
     @Cacheable(cacheNames = "fileHead", key="T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication() + #p0 + #p1 + #p2 + #p3")
     public void getFileHead(String fileId,
                             String destinationFormat,
@@ -316,7 +321,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @return The SAM file header for the file.
      */
     @Override
-    //@HystrixCommand
     @Cacheable(cacheNames = "headerFile", key="T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication() + #p0 + #p1 + #p2 + #p3")
     public Object getFileHeader(String fileId,
                                 String destinationFormat,
@@ -346,7 +350,7 @@ public class RemoteFileServiceImpl implements FileService {
                 header = reader.getFileHeader();
                 reader.close();
             } catch (IOException ex) {
-                Logger.getLogger(RemoteFileServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+                log.error(ex.getMessage(), ex);
             }
         }
 
@@ -380,7 +384,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param response Response stream for the returned data.
      */
     @Override
-    //@HystrixCommand
     public void getById(String fileId,
                         String accession,
                         String format,
@@ -395,7 +398,8 @@ public class RemoteFileServiceImpl implements FileService {
                         String destinationKey,
                         HttpServletRequest request,
                         HttpServletResponse response) {
-
+		
+		String sessionId= Strings.isNullOrEmpty(request.getHeader("Session-Id"))? "" : request.getHeader("Session-Id") + " ";		
         // Adding a content header in the response: binary data
         response.addHeader("Content-Type", MediaType.valueOf("application/octet-stream").toString());
 
@@ -445,7 +449,7 @@ public class RemoteFileServiceImpl implements FileService {
 
                 inputResource = SamInputResource.of(cIn).index(cIndexIn);
             } catch (Exception ex) {
-                throw new InternalErrorException(ex.getMessage(), "9");
+                throw new InternalErrorException(sessionId + ex.getMessage(), "9");
             }
 
             // SamReader with input stream based on RES URL (should work for BAM or CRAM)
@@ -472,7 +476,7 @@ public class RemoteFileServiceImpl implements FileService {
             if (iIndex > -1) { // ref was specified
                 query = reader.queryOverlapping(reference, iStart, iEnd);
             } else if ((reference == null || reference.isEmpty()) && iIndex == -1) {
-                throw new GeneralStreamingException("Unknown reference: " + reference, 40);
+                throw new GeneralStreamingException(sessionId + "Unknown reference: " + reference, 40);
             } else { // no ref - ignore start/end
                 query = reader.iterator();
             }
@@ -511,17 +515,21 @@ public class RemoteFileServiceImpl implements FileService {
                 }
 
             } catch (Throwable t) { // Log Error!
-                EventEntry eev = downloaderLogService.createEventEntry(t.toString(), "GA4GH htsget Download BAM/CRAM");
+                String errorMessage = t.toString();
+                if(errorMessage!=null && errorMessage.length() > 256) {
+                    errorMessage = errorMessage.substring(0,256);
+                }
+                EventEntry eev = downloaderLogService.createEventEntry(errorMessage, "GA4GH htsget Download BAM/CRAM");
                 downloaderLogService.logEvent(eev);
-                System.out.println("ERROR 4 " + t.toString());
-                throw new GeneralStreamingException(t.toString(), 6);
+                log.error(sessionId + "ERROR 4 " + t.toString());
+                throw new GeneralStreamingException(sessionId + t.toString(), 6);
             } finally {
 
                 timeDelta = System.currentTimeMillis() - timeDelta;
                 double speed = (cOut.getCount() / 1024.0 / 1024.0) / (timeDelta / 1000.0);
                 long bytes = cOut.getCount();
                 boolean success = cOut.getCount() > 0;
-                System.out.println("Success? " + success + ", Speed: " + speed + " MB/s");
+                log.info(sessionId + "Success? " + success + ", Speed: " + speed + " MB/s");
                 DownloadEntry dle = downloaderLogService.createDownloadEntry(success, speed, localFileId,
                          "htsget bam/cram", destinationFormat,
                         start, end, bytes);
@@ -559,7 +567,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param response Response stream for the returned data.
      */
     @Override
-    //@HystrixCommand
     public void getVCFById(String fileId,
                            String accession,
                            String format,
@@ -574,7 +581,8 @@ public class RemoteFileServiceImpl implements FileService {
                            String destinationKey,
                            HttpServletRequest request,
                            HttpServletResponse response) {
-
+                           
+		String sessionId= Strings.isNullOrEmpty(request.getHeader("Session-Id"))? "" : request.getHeader("Session-Id") + " ";
         // Adding a content header in the response: binary data
         response.addHeader("Content-Type", MediaType.valueOf("application/octet-stream").toString());
 
@@ -609,21 +617,21 @@ public class RemoteFileServiceImpl implements FileService {
 
                 indexURL = new URL(resURL() + "/file/archive/" + fileIndexFile.getIndexFileId() + vcf_ext[1]); // Just specify index ID
 
-                System.out.println("Opening Reader!! ");
+                log.info(sessionId + "Opening Reader!! ");
                 // VCFFileReader with input stream based on RES URL
                 reader = new MyVCFFileReader(resURL.toString(),
                         indexURL.toString(),
                         false,
                         fileDatabaseURL());
-                System.out.println("Reader!! ");
+                log.info(sessionId + "Reader!! ");
             } catch (Exception ex) {
-                throw new InternalErrorException(ex.getMessage(), "19");
+                throw new InternalErrorException(sessionId + ex.getMessage(), "19");
             } catch (Throwable th) {
-                throw new InternalErrorException(th.getMessage(), "19.1");
+                throw new InternalErrorException(sessionId + th.getMessage(), "19.1");
             }
 
             VCFHeader fileHeader = reader.getFileHeader();
-            System.out.println("Header!! " + fileHeader.toString());
+            log.info(sessionId + "Header!! " + fileHeader.toString());
 
             // Handle Request here - query Reader according to parameters
             int iStart = (int) (start);
@@ -660,14 +668,14 @@ public class RemoteFileServiceImpl implements FileService {
 
                 writer.close();
             } catch (IOException ex) {
-                throw new InternalErrorException(ex.getMessage(), "20");
+                throw new InternalErrorException(sessionId + ex.getMessage(), "20");
             } finally {
 
                 timeDelta = System.currentTimeMillis() - timeDelta;
                 double speed = (cOut.getCount() / 1024.0 / 1024.0) / (timeDelta / 1000.0);
                 long bytes = cOut.getCount();
                 boolean success = cOut.getCount() > 0;
-                System.out.println("Success? " + success + ", Speed: " + speed + " MB/s");
+                log.info(sessionId + "Success? " + success + ", Speed: " + speed + " MB/s");
                 DownloadEntry dle = downloaderLogService.createDownloadEntry(success, speed, localFileId,
                         "htsget vcf/bcf", destinationFormat,
                         start, end, bytes);
@@ -690,7 +698,6 @@ public class RemoteFileServiceImpl implements FileService {
       * @param inDigest input digest to convert.
       * @return integer digest of the input.
       */
-    //@HystrixCommand
     private String getDigestText(byte[] inDigest) {
         BigInteger bigIntIn = new BigInteger(1, inDigest);
         String hashtext = bigIntIn.toString(16);
@@ -707,7 +714,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param headerValue header value to set as an 'X-session' value.
      * @return The response parameter with the header value set.
      */
-    //@HystrixCommand
     private HttpServletResponse setHeaders(HttpServletResponse response, String headerValue) {
         // Set headers for the response
         String headerKey = "X-Session";
@@ -715,7 +721,7 @@ public class RemoteFileServiceImpl implements FileService {
 
         // get MIME type of the file (actually, it's always this for now)
         String mimeType = "application/octet-stream";
-        System.out.println("MIME type: " + mimeType);
+        log.info("MIME type: " + mimeType);
 
         // set content attributes for the response
         response.setContentType(mimeType);
@@ -737,7 +743,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param endCoord End coordinate of the requested file area, or 0.
      * @return Formatted URI for the resource.
      */
-    //@HystrixCommand
     private URI getResUri(String fileStableIdPath,
                           String destFormat,
                           String destKey,
@@ -782,7 +787,6 @@ public class RemoteFileServiceImpl implements FileService {
         return builder.build().encode().toUri();
     }
 
-    //@HystrixCommand
     private String mapRunToFile(String runId) {
 
         // Can't access Runs yet... TODO
@@ -795,7 +799,6 @@ public class RemoteFileServiceImpl implements FileService {
      *
      * @return RES service URL.
      */
-    //@HystrixCommand
     public String resURL() {
         return loadBalancer.choose("RES2").getUri().toString();
     }
@@ -805,7 +808,6 @@ public class RemoteFileServiceImpl implements FileService {
      *
      * @return file database URL.
      */
-    //@HystrixCommand
     public String fileDatabaseURL() {
         return loadBalancer.choose("FILEDATABASE").getUri().toString();
     }
@@ -816,7 +818,6 @@ public class RemoteFileServiceImpl implements FileService {
      * @param fileId ELIXIR id of the requested file.
      * @return The content of the index file.
      */
-    //@HystrixCommand
     @Cacheable(cacheNames = "indexFile", key="T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication() + #p0")
     private FileIndexFile getFileIndexFile(String fileId) {
         FileIndexFile indexFile = null;
@@ -842,7 +843,6 @@ public class RemoteFileServiceImpl implements FileService {
      *     was modified, otherwise UNAUTHORIZED.
      */
     @Override
-    //@HystrixCommand
     @Cacheable(cacheNames = "fileSize", key="T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication() + #p0 + #p1 + #p2 +#p3")
     public ResponseEntity getHeadById(String fileId,
                                       String accession,

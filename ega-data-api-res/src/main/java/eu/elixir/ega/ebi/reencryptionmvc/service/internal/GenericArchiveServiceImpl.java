@@ -15,7 +15,7 @@
  */
 package eu.elixir.ega.ebi.reencryptionmvc.service.internal;
 
-import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.google.common.base.Strings;
 import eu.elixir.ega.ebi.reencryptionmvc.config.NotFoundException;
 import eu.elixir.ega.ebi.reencryptionmvc.dto.ArchiveSource;
 import eu.elixir.ega.ebi.reencryptionmvc.dto.EgaFile;
@@ -31,9 +31,10 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import javax.servlet.http.HttpServletResponse;
+import static eu.elixir.ega.ebi.reencryptionmvc.config.Constants.FILEDATABASE_SERVICE;
 
-import static eu.elixir.ega.ebi.shared.Constants.FILEDATABASE_SERVICE;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author asenf
@@ -52,14 +53,14 @@ public class GenericArchiveServiceImpl implements ArchiveService {
 
     @Override
     @Retryable(maxAttempts = 8, backoff = @Backoff(delay = 2000, multiplier = 2))
-    @HystrixCommand
-    public ArchiveSource getArchiveFile(String id, HttpServletResponse response) {
+    public ArchiveSource getArchiveFile(String id,  HttpServletRequest request, HttpServletResponse response) {
+        String sessionId= Strings.isNullOrEmpty(request.getHeader("Session-Id"))? "" : request.getHeader("Session-Id") + " ";
         // Get Filename from EgaFile ID - via DATA service (potentially multiple files)
         ResponseEntity<EgaFile[]> forEntity = restTemplate.getForEntity(FILEDATABASE_SERVICE + "/file/{fileId}", EgaFile[].class, id);
         int statusCodeValue = forEntity.getStatusCodeValue();
         EgaFile[] body = forEntity.getBody();
         if ((body == null || body.length == 0)) {
-            throw new NotFoundException("Can't obtain File data for ID", id);
+            throw new NotFoundException(sessionId + "Can't obtain File data for ID", id);
         }
         String fileName = forEntity.getBody()[0].getFileName();
 

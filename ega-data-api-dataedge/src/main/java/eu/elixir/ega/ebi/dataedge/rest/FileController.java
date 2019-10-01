@@ -15,8 +15,10 @@
  */
 package eu.elixir.ega.ebi.dataedge.rest;
 
+import com.google.common.base.Strings;
 import eu.elixir.ega.ebi.dataedge.config.InvalidAuthenticationException;
 import eu.elixir.ega.ebi.shared.service.AuthenticationService;
+import lombok.extern.slf4j.Slf4j;
 import eu.elixir.ega.ebi.dataedge.service.FileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -29,8 +31,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static org.springframework.web.bind.annotation.RequestMethod.*;
 
@@ -39,6 +39,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
  */
 @RestController
 @EnableDiscoveryClient
+@Slf4j
 @RequestMapping("/files")
 public class FileController {
 
@@ -72,15 +73,17 @@ public class FileController {
      */
     @RequestMapping(value = "/{fileId}", method = GET)
     public void getFile(@PathVariable String fileId,
-                        @RequestParam(value = "destinationFormat", required = false, defaultValue = "aes128") String destinationFormat,
+                        @RequestParam(value = "destinationFormat", required = false, defaultValue = "plain") String destinationFormat,
                         @RequestParam(value = "destinationKey", required = false, defaultValue = "") String destinationKey,
-                        @RequestParam(value = "destinationIV", required = false, defaultValue = "RANDOM") String destinationIV,
+                        @RequestParam(value = "destinationIV", required = false) String destinationIV,
                         @RequestParam(value = "startCoordinate", required = false, defaultValue = "0") long startCoordinate,
                         @RequestParam(value = "endCoordinate", required = false, defaultValue = "0") long endCoordinate,
                         @RequestHeader(value = "Range", required = false, defaultValue = "") String range,
                         HttpServletRequest request,
                         HttpServletResponse response) {
-
+		String sessionId= Strings.isNullOrEmpty(request.getHeader("Session-Id"))? "" : request.getHeader("Session-Id") + " ";
+		log.info(sessionId + "Get file request started");
+		
         if (range.length() > 0 && range.startsWith("bytes=") && startCoordinate == 0 && endCoordinate == 0) {
             String[] ranges = range.substring("bytes=".length()).split("-");
             startCoordinate = Long.valueOf(ranges[0]);
@@ -99,7 +102,7 @@ public class FileController {
         try {
             response.flushBuffer();
         } catch (IOException ex) {
-            Logger.getLogger(FileController.class.getName()).log(Level.SEVERE, null, ex);
+            log.error(sessionId + ex.getMessage(), ex);
         }
     }
 

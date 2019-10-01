@@ -101,7 +101,7 @@ public class FileController {
                                HttpServletResponse response) {
 
         // Resolve Archive ID to actual File Path/URL - Needs Organization-Specific Implementation!
-        ArchiveSource source = archiveService.getArchiveFile(id, response);
+        ArchiveSource source = archiveService.getArchiveFile(id, request, response);
 
         // Merge execution with fully specified function
         getFile(source.getEncryptionFormat(),
@@ -127,7 +127,7 @@ public class FileController {
                                    HttpServletResponse response) {
 
         // Resolve Archive ID to actual File Path/URL - Needs Organization-Specific Implementation!
-        ArchiveSource source = archiveService.getArchiveFile(id, response);
+        ArchiveSource source = archiveService.getArchiveFile(id, request, response);
         if (source == null) {
             throw new NotFoundException("Archive File not found, id", id);
         }
