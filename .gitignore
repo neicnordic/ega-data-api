@@ -46,3 +46,4 @@ __pycache__
 
 # Personal files
 personal
+extras/posgresdb/*
