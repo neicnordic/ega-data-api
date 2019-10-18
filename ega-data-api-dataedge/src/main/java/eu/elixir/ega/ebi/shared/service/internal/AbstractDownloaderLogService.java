@@ -31,7 +31,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
   /**
    * Writes an {@link EventEntry} string to the log.
    *
-   * @param downloadEntry an EventEntry to write to the log
+   * @param #eventEntry an EventEntry to write to the log
    */
   @Override
   public void logEvent(EventEntry eventEntry) {
@@ -59,7 +59,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
     eev.setClientIp(ipAddress);
     eev.setEvent(t);
     eev.setEventType("Error");
-    eev.setEmail(authenticationService.getName());
+    eev.setEmail(authenticationService.getSubjectIdentifier());
     eev.setCreated(new java.sql.Timestamp(Calendar.getInstance().getTime().getTime()));
 
     return eev;
@@ -93,7 +93,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
       ipAddress = request.getRemoteAddr();
     }
     dle.setClientIp(ipAddress);
-    dle.setEmail(authenticationService.getName());
+    dle.setEmail(authenticationService.getSubjectIdentifier());
     dle.setApi(server);
     dle.setEncryptionType(encryptionType);
     dle.setStartCoordinate(startCoordinate);
@@ -106,7 +106,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
   }
 
 	protected void logFileDownload(EventEntry eventEntry) {
-		String loggedinUser = authenticationService.getName();
+		String loggedinUser = authenticationService.getSubjectIdentifier();
 		log.info(String.format("User %s attempted to download file with error %s", loggedinUser, eventEntry));
 	}
 
