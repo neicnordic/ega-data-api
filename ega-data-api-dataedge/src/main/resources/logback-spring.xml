@@ -5,7 +5,7 @@
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>
-                    %d{yyyy-MM-dd};%d{HH:mm:ss.SSS};%t;%5p;%logger{25};%m%n
+                      [%5p] %d{yyyy-MM-dd};%d{HH:mm:ss.SSS} - [%t] - %C:%L - %m%n
                 </pattern>
                 <charset>utf8</charset>
             </encoder>
@@ -50,7 +50,7 @@
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>
-                    %d{yyyy-MM-dd};%d{HH:mm:ss.SSS};%t;%5p;%logger{25};%m%n
+                    [%5p] %d{yyyy-MM-dd};%d{HH:mm:ss.SSS} - [%t] - %C:%L - %m%n
                 </pattern>
                 <charset>utf8</charset>
             </encoder>

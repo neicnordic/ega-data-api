@@ -111,7 +111,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
 	}
 
 	protected void logFileDownload(DownloadEntry downloadEntry) {
-		String loggedinUser = authenticationService.getName();
+		String loggedinUser = authenticationService.getSubjectIdentifier();
 		log.info(String.format("User %s attempt successfully to download file %s", loggedinUser, downloadEntry));
 	}
 }
