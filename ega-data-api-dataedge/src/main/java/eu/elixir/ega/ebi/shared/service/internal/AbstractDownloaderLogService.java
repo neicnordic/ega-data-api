@@ -1,16 +1,19 @@
 package eu.elixir.ega.ebi.shared.service.internal;
 
+import java.util.Calendar;
+import javax.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
 import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
-import java.util.Calendar;
-import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
-public abstract class AbstractDownloaderLogService implements DownloaderLogService {
+public abstract class AbstractDownloaderLogService implements DownloaderLogService  {
+  @Autowired
+  private Environment environment;
 
   @Autowired
   protected AuthenticationService authenticationService;
@@ -105,13 +108,23 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
     return dle;
   }
 
-	protected void logFileDownload(EventEntry eventEntry) {
-		String loggedinUser = authenticationService.getSubjectIdentifier();
-		log.info(String.format("User %s attempted to download file with error %s", loggedinUser, eventEntry));
-	}
+    protected void logFileDownload(EventEntry eventEntry) {
+        log.info(String.format("User %s attempted to download file with error %s",
+                readLoggedInUser(), eventEntry));
+    }
 
-	protected void logFileDownload(DownloadEntry downloadEntry) {
-		String loggedinUser = authenticationService.getSubjectIdentifier();
-		log.info(String.format("User %s attempt successfully to download file %s", loggedinUser, downloadEntry));
-	}
+    protected void logFileDownload(DownloadEntry downloadEntry) {
+        log.info(String.format("User %s attempt successfully to download file %s",
+                readLoggedInUser(), downloadEntry));
+    }
+
+    private String readLoggedInUser() {
+        String loggedinUser;
+        if (environment.acceptsProfiles("LocalEGA")) {
+            loggedinUser = authenticationService.getSubjectIdentifier();
+        } else {
+            loggedinUser = authenticationService.getName();
+        }
+        return loggedinUser;
+    }
 }

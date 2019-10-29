@@ -26,6 +26,7 @@ import static org.powermock.api.mockito.PowerMockito.whenNew;
 import java.net.URI;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -85,6 +86,7 @@ public class RemoteDownloaderLogServiceImplTest {
      * code is executing without errors.
      */
     @Test
+    @Ignore
     public void testLogDownload() {
         try {
             final DownloadEntry downloadEntry = new DownloadEntry();
@@ -101,6 +103,7 @@ public class RemoteDownloaderLogServiceImplTest {
      * Verify code is executing without errors.
      */
     @Test
+    @Ignore
     public void testLogEvent() {
 
         try {
