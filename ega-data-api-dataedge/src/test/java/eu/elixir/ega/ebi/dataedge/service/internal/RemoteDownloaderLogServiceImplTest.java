@@ -34,8 +34,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.junit4.PowerMockRunnerDelegate;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
 import eu.elixir.ega.ebi.shared.service.AuthenticationService;
+import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
 import eu.elixir.ega.ebi.shared.service.internal.RemoteDownloaderLogServiceImpl;
 
 /**
@@ -51,8 +58,10 @@ import eu.elixir.ega.ebi.shared.service.internal.RemoteDownloaderLogServiceImpl;
  * @author amohan
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(RemoteDownloaderLogServiceImpl.class)
+
+@PrepareForTest(DownloaderLogService.class)
 @TestPropertySource(locations = "classpath:application-test.properties")
+@ActiveProfiles(profiles = "LocalEGA")
 public class RemoteDownloaderLogServiceImplTest {
 
     @InjectMocks
@@ -60,6 +69,9 @@ public class RemoteDownloaderLogServiceImplTest {
 
     @Mock
     private RestTemplate restTemplate;
+    
+    @Mock
+    Environment environment;
     
     @Mock
     private AuthenticationService authenticationService;
@@ -78,43 +90,59 @@ public class RemoteDownloaderLogServiceImplTest {
         when(restTemplate.postForEntity(eq(FILEDATABASE_SERVICE + "/log/download/"), any(), eq(String.class))).thenReturn(responseString);
         when(restTemplate.postForEntity(eq(FILEDATABASE_SERVICE + "/log/event/"), any(), eq(String.class))).thenReturn(responseString);
         when(authenticationService.getName()).thenReturn("user");
+        when(authenticationService.getSubjectIdentifier()).thenReturn("user@email.com");
+        when(environment.acceptsProfiles("LocalEGA")).thenReturn(true );
+    }
+    
+    @Test
+    public void givenLocalEGAProfileWhenLogDownloadLocalEgaThenEmail() {
+      try {
+        final DownloadEntry downloadEntry = new DownloadEntry();
+        downloadEntry.setFileId("fileId");
+        remoteDownloaderLogServiceImpl.logDownload(downloadEntry);
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail("Should not have thrown an exception");
+      }
+    }
+    
+    @Test
+    public void givenNonLocalEGAProfileWhenLogEventThenEmail() {
+      when(environment.acceptsProfiles("LocalEGA")).thenReturn(false );
+
+      try {
+        final EventEntry eventEntry = new EventEntry();
+        eventEntry.setEventId("eventId");
+        remoteDownloaderLogServiceImpl.logEvent(eventEntry);
+      } catch (Exception e) {
+        e.printStackTrace(System.out);
+        fail("Should not have thrown an exception");
+      }
     }
 
-    /**
-     * Test class for
-     * {@link RemoteDownloaderLogServiceImpl#logDownload(DownloadEntry)}. Verify
-     * code is executing without errors.
-     */
     @Test
-    @Ignore
-    public void testLogDownload() {
+    public void givenNonLocalEGAProfileWhenLogDownloadLocalEgaThenEmail() {
+      when(environment.acceptsProfiles("LocalEGA")).thenReturn(false );
+
         try {
             final DownloadEntry downloadEntry = new DownloadEntry();
             downloadEntry.setFileId("fileId");
             remoteDownloaderLogServiceImpl.logDownload(downloadEntry);
         } catch (Exception e) {
+          e.printStackTrace();
             fail("Should not have thrown an exception");
         }
-
     }
 
-    /**
-     * Test class for {@link RemoteDownloaderLogServiceImpl#logEvent(EventEntry)}.
-     * Verify code is executing without errors.
-     */
     @Test
-    @Ignore
-    public void testLogEvent() {
-
+    public void givenLocalEGAProfileWhenLogEventThenEmail() {
         try {
             final EventEntry eventEntry = new EventEntry();
             eventEntry.setEventId("eventId");
-
             remoteDownloaderLogServiceImpl.logEvent(eventEntry);
         } catch (Exception e) {
             e.printStackTrace(System.out);
             fail("Should not have thrown an exception");
         }
-
     }
 }
