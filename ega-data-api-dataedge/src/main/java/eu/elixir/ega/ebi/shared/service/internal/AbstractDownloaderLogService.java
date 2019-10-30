@@ -62,7 +62,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
     eev.setClientIp(ipAddress);
     eev.setEvent(t);
     eev.setEventType("Error");
-    eev.setEmail(authenticationService.getSubjectIdentifier());
+    eev.setEmail(readLoggedInUser());
     eev.setCreated(new java.sql.Timestamp(Calendar.getInstance().getTime().getTime()));
 
     return eev;
@@ -96,7 +96,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
       ipAddress = request.getRemoteAddr();
     }
     dle.setClientIp(ipAddress);
-    dle.setEmail(authenticationService.getSubjectIdentifier());
+    dle.setEmail(readLoggedInUser());
     dle.setApi(server);
     dle.setEncryptionType(encryptionType);
     dle.setStartCoordinate(startCoordinate);
