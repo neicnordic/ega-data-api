@@ -1,16 +1,19 @@
 package eu.elixir.ega.ebi.shared.service.internal;
 
+import java.util.Calendar;
+import javax.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import eu.elixir.ega.ebi.shared.dto.DownloadEntry;
 import eu.elixir.ega.ebi.shared.dto.EventEntry;
 import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import eu.elixir.ega.ebi.shared.service.DownloaderLogService;
-import java.util.Calendar;
-import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
-public abstract class AbstractDownloaderLogService implements DownloaderLogService {
+public abstract class AbstractDownloaderLogService implements DownloaderLogService  {
+  @Autowired
+  private Environment environment;
 
   @Autowired
   protected AuthenticationService authenticationService;
@@ -31,7 +34,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
   /**
    * Writes an {@link EventEntry} string to the log.
    *
-   * @param downloadEntry an EventEntry to write to the log
+   * @param #eventEntry an EventEntry to write to the log
    */
   @Override
   public void logEvent(EventEntry eventEntry) {
@@ -59,7 +62,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
     eev.setClientIp(ipAddress);
     eev.setEvent(t);
     eev.setEventType("Error");
-    eev.setEmail(authenticationService.getName());
+    eev.setEmail(readLoggedInUser());
     eev.setCreated(new java.sql.Timestamp(Calendar.getInstance().getTime().getTime()));
 
     return eev;
@@ -93,7 +96,7 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
       ipAddress = request.getRemoteAddr();
     }
     dle.setClientIp(ipAddress);
-    dle.setEmail(authenticationService.getName());
+    dle.setEmail(readLoggedInUser());
     dle.setApi(server);
     dle.setEncryptionType(encryptionType);
     dle.setStartCoordinate(startCoordinate);
@@ -105,13 +108,23 @@ public abstract class AbstractDownloaderLogService implements DownloaderLogServi
     return dle;
   }
 
-	protected void logFileDownload(EventEntry eventEntry) {
-		String loggedinUser = authenticationService.getName();
-		log.info(String.format("User %s attempted to download file with error %s", loggedinUser, eventEntry));
-	}
+    protected void logFileDownload(EventEntry eventEntry) {
+        log.info(String.format("User %s attempted to download file with error %s",
+                readLoggedInUser(), eventEntry));
+    }
 
-	protected void logFileDownload(DownloadEntry downloadEntry) {
-		String loggedinUser = authenticationService.getName();
-		log.info(String.format("User %s attempt successfully to download file %s", loggedinUser, downloadEntry));
-	}
+    protected void logFileDownload(DownloadEntry downloadEntry) {
+        log.info(String.format("User %s attempt successfully to download file %s",
+                readLoggedInUser(), downloadEntry));
+    }
+
+    private String readLoggedInUser() {
+        String loggedinUser;
+        if (environment.acceptsProfiles("LocalEGA")) {
+            loggedinUser = authenticationService.getSubjectIdentifier();
+        } else {
+            loggedinUser = authenticationService.getName();
+        }
+        return loggedinUser;
+    }
 }

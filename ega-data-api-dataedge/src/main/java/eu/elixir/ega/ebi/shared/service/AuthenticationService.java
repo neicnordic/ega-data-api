@@ -24,6 +24,8 @@ public interface AuthenticationService {
    */
   String getName();
 
+  String getSubjectIdentifier();
+
   /**
    * Returns the authentication authorities of the current security context.
    *

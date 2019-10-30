@@ -1,19 +1,27 @@
 package eu.elixir.ega.ebi.shared.service.internal;
 
-import eu.elixir.ega.ebi.dataedge.config.CustomUsernamePasswordAuthenticationToken;
-import eu.elixir.ega.ebi.shared.service.AuthenticationService;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.jwt.Jwt;
+import org.springframework.security.jwt.JwtHelper;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationDetails;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.elixir.ega.ebi.dataedge.config.CustomUsernamePasswordAuthenticationToken;
+import eu.elixir.ega.ebi.shared.service.AuthenticationService;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class AuthenticationServiceImpl implements AuthenticationService {
+
+  private static final String SUB = "sub";
 
   /**
    * Returns the authentication information from the current security context.
@@ -24,6 +32,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   public Authentication getAuthentication() {
     return SecurityContextHolder.getContext().getAuthentication();
   }
+
 
   /**
    * Returns the login name from the current security context.
@@ -39,6 +48,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     return null;
   }
 
+    public String getSubjectIdentifier() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object details = authentication.getDetails();
+        if (details instanceof OAuth2AuthenticationDetails) {
+            OAuth2AuthenticationDetails oauthDetails = (OAuth2AuthenticationDetails) details;
+            return decodeClaimFromToken(oauthDetails.getTokenValue(), SUB);
+        } else {
+            return null;
+        }
+    }
   /**
    * Returns the authentication authorities of the current security context.
    *
@@ -72,5 +91,25 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
     return null;
   }
+  
+  private String decodeClaimFromToken(String accessToken, String claimKey) {
+    if (accessToken == null || accessToken.length() == 0)
+      return null;
 
+    Jwt decodedToken = JwtHelper.decode(accessToken);
+    String claims = decodedToken.getClaims();
+    boolean contains = claims.contains(claimKey);
+    if (contains) {
+      ObjectMapper mapper = new ObjectMapper();
+      try {
+        Map<String, Object> tokenMap =
+            mapper.readValue(claims, new TypeReference<Map<String, Object>>() {});
+        return tokenMap.get(claimKey).toString();
+      } catch (Exception e) {
+        log.error(e.getMessage());
+      }
+
+    }
+    return null;
+  }
 }

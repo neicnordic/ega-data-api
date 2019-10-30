@@ -107,7 +107,7 @@ public class MyAccessTokenConverter implements AccessTokenConverter {
      *
      * @param value Value to set in the return authentication token
      * @param map   An authentication map, such as returned from
-     *              {@link convertAccessToken}
+     *              {@link #convertAccessToken(OAuth2AccessToken, OAuth2Authentication)}
      * @return Access token containing the combined information
      */
     public OAuth2AccessToken extractAccessToken(String value, Map<String, ?> map) {
@@ -132,34 +132,35 @@ public class MyAccessTokenConverter implements AccessTokenConverter {
      * Uses the information in the given authentication map to create an
      * authentication request.
      *
-     * @param map An authentication map, such as returned from
-     *            {@link convertAccessToken}
+     * @param  claims An authentication map, such as returned from
+     *            {@link #convertAccessToken(OAuth2AccessToken, OAuth2Authentication)}
      * @return An OAuth2 authentication object
      */
     @Override
-    public OAuth2Authentication extractAuthentication(Map<String, ?> map) {
+    public OAuth2Authentication extractAuthentication(Map<String, ?> claims) {
 
         // Add Dataset Permissions as Roles
-        Map<String, Object> info = new HashMap<>(map);
+        Map<String, Object> info = new HashMap<>(claims);
         if (info.containsKey("Permissions")) {
             Object get = info.get("Permissions");
             info.put(AUTHORITIES, get); // OK - Permissions from AAI Response
         }
 
         Map<String, String> parameters = new HashMap<>();
-        Set<String> scope = extractScope(map);
+        Set<String> scope = extractScope(claims);
         Authentication user = userTokenConverter.extractAuthentication(info); // {map} Use 'enhanced' Map with Permissions
-        String clientId = (String) map.get(CLIENT_ID);
+        String clientId = (String) claims.get(CLIENT_ID);
+
         parameters.put(CLIENT_ID, clientId);
-        if (includeGrantType && map.containsKey(GRANT_TYPE)) {
-            parameters.put(GRANT_TYPE, (String) map.get(GRANT_TYPE));
+        if (includeGrantType && claims.containsKey(GRANT_TYPE)) {
+            parameters.put(GRANT_TYPE, (String) claims.get(GRANT_TYPE));
         }
-        Set<String> resourceIds = new LinkedHashSet<>(map.containsKey(AUD) ? getAudience(map) : Collections.emptySet());
+        Set<String> resourceIds = new LinkedHashSet<>(claims.containsKey(AUD) ? getAudience(claims) : Collections.emptySet());
 
         Collection<? extends GrantedAuthority> authorities = null;
-        if (user == null && map.containsKey(AUTHORITIES)) {
+        if (user == null && claims.containsKey(AUTHORITIES)) {
             @SuppressWarnings("unchecked")
-            String[] roles = ((Collection<String>) map.get(AUTHORITIES)).toArray(new String[0]);
+            String[] roles = ((Collection<String>) claims.get(AUTHORITIES)).toArray(new String[0]);
             authorities = AuthorityUtils.createAuthorityList(roles);
         }
         OAuth2Request request = new OAuth2Request(parameters, clientId, authorities, true, scope, resourceIds, null, null,
@@ -172,7 +173,7 @@ public class MyAccessTokenConverter implements AccessTokenConverter {
      * given authentication map.
      *
      * @param map An authentication map, such as returned from
-     *            {@link convertAccessToken}
+     *            {@link #convertAccessToken(OAuth2AccessToken, OAuth2Authentication)
      * @return The extracted authentication audience
      */
     private Collection<String> getAudience(Map<String, ?> map) {
@@ -190,7 +191,7 @@ public class MyAccessTokenConverter implements AccessTokenConverter {
      * given authentication map.
      *
      * @param map An authentication map, such as returned from
-     *            {@link convertAccessToken}
+     *            {@link #convertAccessToken(OAuth2AccessToken, OAuth2Authentication)}
      * @return The extracted authentication scope
      */
     private Set<String> extractScope(Map<String, ?> map) {
