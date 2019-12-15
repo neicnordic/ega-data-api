@@ -1,5 +1,5 @@
 spring.profiles: no-oss,LocalEGA
-spring.profiles.include: log-transfer,repo-logger,db-repo-logger,error
+spring.profiles.include: error
 
 eureka.client.enabled: false
 
@@ -17,6 +17,9 @@ RES2:
 
 KEYSERVER:
   listOfServers: ${KEYS_SERVERS:keys}
+
+
+local.directory.path: ${LOCAL_DIR:/lega}
 
 
 ega.ebi.fire.url: http://test

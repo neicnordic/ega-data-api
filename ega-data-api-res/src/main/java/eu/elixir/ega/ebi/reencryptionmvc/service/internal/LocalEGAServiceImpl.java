@@ -81,6 +81,9 @@ public class LocalEGAServiceImpl implements ResService {
     @Value("${ega.ebi.aws.access.secret:#{null}}")
     private String s3Secret;
 
+    @Value("${local.directory.path}")
+    private String LOCAL_DIR;
+
     @Autowired
     private KeyService keyService;
 
@@ -155,7 +158,7 @@ public class LocalEGAServiceImpl implements ResService {
                 inputStream = new SeekableHTTPStream(new URL(fileLocation));
             }
         } else if (fileLocation.startsWith("/")) { // absolute file path
-            inputStream = new SeekableFileStream(new File(fileLocation));
+            inputStream = new SeekableFileStream(new File(LOCAL_DIR + fileLocation));
         } else { // S3 object
             String presignedObjectUrl = s3Client.getPresignedObjectUrl(Method.GET, s3Bucket, fileLocation, MAX_EXPIRATION_TIME, null);
             inputStream = new SeekableHTTPStream(new URL(presignedObjectUrl));
